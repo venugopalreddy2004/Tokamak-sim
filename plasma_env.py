@@ -2,6 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 import random
+from queue import Queue
 
 class TokamakEnv(gym.Env):
     
@@ -28,7 +29,10 @@ class TokamakEnv(gym.Env):
 
         self.state = np.random.uniform(low=-0.01, high=0.01, size=(3,)).astype(np.float32)
         #this will amount to the delay to providing required voltage to the reactor 
-        self.action_queue = [0.0]*8
+        aq = Queue(maxsize=8)
+        for _ in range(8):
+            aq.put(0.0)
+        self.action_queue = aq
         self.gamma = 49.0
         self.steps = 0
         
@@ -38,13 +42,11 @@ class TokamakEnv(gym.Env):
     def step(self, action):
         z, dz, In = self.state
         
-        self.action_queue.append(float(action[0]))
-        delayed_action = self.action_queue.pop()
-        V = np.clip(delayed_action, -1.0, 1.0) * self.max_voltage
+        delayed_action = self.action_queue.get()
+        self.action_queue.put(float(action[0]))
+        V = delayed_action * self.max_voltage
         
         fluc = 0.07
-        #this imitates thermal quench
-        if(self.steps >0 and self.steps%100==0): fluc = 19.0
         self.gamma += fluc
         
         dI = (V - self.R * In)/(self.L)
@@ -71,7 +73,7 @@ class TokamakEnv(gym.Env):
 if __name__ == "__main__":
     env = TokamakEnv()
     obs, _ = env.reset();
-    print("Starting MLP Agent Test...")
+    print("---- No Agent Test ----")
     for i in range(1000):
         action = env.action_space.sample() 
         obs, reward, term, trunc, _ = env.step(action)
