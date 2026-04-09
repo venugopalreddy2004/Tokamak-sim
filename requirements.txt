@@ -1,0 +1,5 @@
+numpy
+gymnasium
+mamba-ssm
+torch
+matplotlib
